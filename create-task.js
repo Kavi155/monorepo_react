@@ -6,7 +6,7 @@ const { execSync, exec } = require('child_process');
 const BASE_PORT = 3000;
 
 // Path to the base template directory
-const baseTemplateDir = path.join(__dirname, 'base_template');
+const baseTemplateDir = path.join(__dirname, 'base-template');
 
 // Check if a task ID is provided as a command-line argument
 const taskId = process.argv[2];
