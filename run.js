@@ -1,11 +1,13 @@
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-// Get the argument passed (e.g., 1-a, 1a, 2b, 1-ir)
+
+// Get the arguments passed (e.g., 1-a turn1 or 1a)
 const taskAndProject = process.argv[2];
+const subFolder = process.argv[3];  // Optional subfolder argument
 
 if (!taskAndProject || (!/^\d+[a|b|ir]+$/.test(taskAndProject) && !/^\d+-[a|b|ir]+$/.test(taskAndProject))) {
-    console.error("Usage: node run <taskNumber><a|b|ir> or <taskNumber>-<a|b|ir> (e.g., node run 1a, node run 1-a, node run 1-ir)");
+    console.error("Usage: node run <taskNumber><a|b|ir> [subfolder] or <taskNumber>-<a|b|ir> [subfolder] (e.g., node run 1a turn1, node run 1-a turn1)");
     process.exit(1);
 }
 
@@ -34,8 +36,12 @@ if (!projectMap[projectKey]) {
     process.exit(1);
 }
 
-// Get the project directory based on the input
-const projectDir = path.join(__dirname, `tasks/task-${taskNumber}/${projectMap[projectKey]}`);
+// Build the project directory based on the input
+let projectDir = path.join(__dirname, `tasks/task-${taskNumber}`);
+if (subFolder) {
+    projectDir = path.join(projectDir, subFolder);  // Add the subfolder if provided (e.g., turn1, turn2)
+}
+projectDir = path.join(projectDir, projectMap[projectKey]);
 
 // Check if the project directory exists
 if (!fs.existsSync(projectDir)) {
