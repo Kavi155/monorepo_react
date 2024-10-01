@@ -1,6 +1,7 @@
 const fs = require('fs');
+const fse = require('fs-extra'); // fs-extra is more reliable for file copying
 const path = require('path');
-const { execSync, exec } = require('child_process');
+const { execSync } = require('child_process');
 
 // Base port number
 const BASE_PORT = 3000;
@@ -10,8 +11,10 @@ const baseTemplateDir = path.join(__dirname, 'base-template');
 
 // Check if a task ID is provided as a command-line argument
 const taskId = process.argv[2];
+const subFolder = process.argv[3];  // Optional subfolder (e.g., turn1, turn2)
+
 if (!taskId) {
-    console.error("Usage: node create-task.js <task-id>");
+    console.error("Usage: node create-task.js <task-id> [subfolder]");
     process.exit(1);
 }
 
@@ -21,7 +24,12 @@ const modelBPort = BASE_PORT + (taskId - 1) * 3 + 2;
 const idealResponsePort = BASE_PORT + (taskId - 1) * 3 + 3;
 
 // Directory structure for the task
-const taskDir = path.join(__dirname, `tasks/task-${taskId}`);
+let taskDir = path.join(__dirname, `tasks/task-${taskId}`);
+if (subFolder) {
+    taskDir = path.join(taskDir, subFolder);  // Add the subfolder if provided (e.g., turn1, turn2)
+    console.log(`Subfolder provided: ${subFolder}. Projects will be created under ${taskDir}.`);
+}
+
 const modelADir = path.join(taskDir, 'Model-A');
 const modelBDir = path.join(taskDir, 'Model-B');
 const idealResponseDir = path.join(taskDir, 'Ideal-response');
@@ -31,15 +39,24 @@ fs.mkdirSync(modelADir, { recursive: true });
 fs.mkdirSync(modelBDir, { recursive: true });
 fs.mkdirSync(idealResponseDir, { recursive: true });
 
-// Function to copy the base template folder to a project directory
-function copyBaseTemplate(destination) {
-    execSync(`cp -r ${baseTemplateDir}/* ${destination}`);
+// Function to copy the base template folder to a project directory without node_modules
+function copyBaseTemplate(src, dest) {
+    console.log(`Copying base template to ${dest}, excluding node_modules...`);
+
+    try {
+        fse.copySync(src, dest, {
+            filter: (src, dest) => !src.includes('node_modules'),  // Skip node_modules folder
+        });
+        console.log(`Base template copied to ${dest}.`);
+    } catch (err) {
+        console.error(`Error copying base template: ${err.message}`);
+    }
 }
 
 // Copy the base template to all three project directories
-copyBaseTemplate(modelADir);
-copyBaseTemplate(modelBDir);
-copyBaseTemplate(idealResponseDir);
+copyBaseTemplate(baseTemplateDir, modelADir);
+copyBaseTemplate(baseTemplateDir, modelBDir);
+copyBaseTemplate(baseTemplateDir, idealResponseDir);
 
 // Function to update the package.json dynamically
 function updatePackageJson(projectDir, projectName, port) {
@@ -94,30 +111,7 @@ function installDependenciesSequentially() {
     }
 }
 
-// Function to start all projects concurrently
-/*
-function startProjects() {
-    console.log("Starting projects...");
-
-    const startCommands = [
-        `npm run dev --prefix ${modelADir}`,
-        `npm run dev --prefix ${modelBDir}`,
-        `npm run dev --prefix ${idealResponseDir}`
-    ];
-
-    exec(`concurrently "${startCommands.join('" "')}"`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error starting projects: ${error.message}`);
-            return;
-        }
-        console.log(stdout);
-    });
-}
-*/
 // Install dependencies sequentially
 installDependenciesSequentially();
-
-// Start the projects concurrently after the installation is complete
-//startProjects();
 
 console.log(`Task ${taskId} created successfully with Model-A (Port: ${modelAPort}), Model-B (Port: ${modelBPort}), and Ideal-response (Port: ${idealResponsePort}).`);
